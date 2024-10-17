@@ -1,7 +1,8 @@
-import streamlit as st
-import pandas as pd
 import duckdb
 import io
+import pandas as pd
+import streamlit as st
+from streamlit import sidebar
 
 
 csv1 = """
@@ -27,12 +28,25 @@ CROSS JOIN food_prices
 
 solution = duckdb.sql(answer).df()
 
-st.header("Enter your code:")
-query = st.text_area(label="Votre code SQL ici", key="user_input")
+
+with sidebar:
+    option = st.selectbox(
+        "What would you like to revise?",
+        ("Joins","GroupBy","Window Functions"),
+        index=None,
+        placeholder="Selected theme..."
+    )
+
+    st.write('You selected:',option)
+
+
+st.header("Your Solution:")
+query = st.text_area(label="Your Query was:", key="user_input")
 
 if query:
     result = duckdb.sql(query).df()
     st.dataframe(result)
+
 
 tab2, tab3 = st.tabs(["Tables", "Solution"])
 
