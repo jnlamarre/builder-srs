@@ -1,11 +1,19 @@
 # pylint: disable=missing-module-docstring
-
+import logging
+import os
 import duckdb
-import ast
-import pandas as pd
 import streamlit as st
 
 con = duckdb.connect(database="data/exercises_tables.duckdb", read_only=False)
+
+if "data" not in os.listdir():
+    print("create folder data")
+    logging.error(os.listdir())
+    logging.error("create folder data")
+    os.mkdir("data")
+
+if "exercises_tables.duckdb" not in os.listdir("data"):
+    exec(open("init_db.py").read())
 
 with st.sidebar:
     theme = st.selectbox(
@@ -17,10 +25,10 @@ with st.sidebar:
 
     st.write("You selected:", theme)
 
-    exercise = con.execute(f"SELECT * FROM memory_state WHERE theme = '{theme}'").df()
+    exercise = con.execute(f"SELECT * FROM memory_state WHERE theme = '{theme}'").df().sort_values("last_reviewed")
     st.write(exercise)
 
-    exercise_name = exercise.loc[0, "exercise_name"]
+    exercise_name = exercise.iloc[0]["exercise_name"]
     with open(f"answers/{exercise_name}.sql", "r") as f:
         answer = f.read()
 
@@ -49,11 +57,11 @@ if query:
 tab2, tab3 = st.tabs(["Tables", "Solution"])
 
 with tab2:
-    exercise_tables = ast.literal_eval(exercise.loc[0,"tables"])
+    exercise_tables = exercise.iloc[0]["tables"]
     for table in exercise_tables:
         st.write(f"table: {table}")
         df_table = con.execute(f"SELECT * FROM {table}").df()
         st.dataframe(df_table)
 
 with tab3:
-    st.write(answer)
+    st.text(answer)
