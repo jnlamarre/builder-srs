@@ -1,51 +1,44 @@
 # pylint: disable=missing-module-docstring
-
-import io
-
+import logging
+import os
 import duckdb
-import pandas as pd
 import streamlit as st
 
-CSV1 = """
-beverage,price
-orange juice,2.5
-expresso,2
-tea,3
-"""
-beverages = pd.read_csv(io.StringIO(CSV1))
+con = duckdb.connect(database="data/exercises_tables.duckdb", read_only=False)
 
-CSV2 = """
-food_item,food_price
-cookie,2.5
-chocolatine,2
-muffin,3
-"""
-food_prices = pd.read_csv(io.StringIO(CSV2))
+if "data" not in os.listdir():
+    print("create folder data")
+    logging.error(os.listdir())
+    logging.error("create folder data")
+    os.mkdir("data")
 
-ANSWER_STR = """
-SELECT * FROM beverages
-CROSS JOIN food_prices
-"""
-
-solution_df = duckdb.sql(ANSWER_STR).df()
-
+if "exercises_tables.duckdb" not in os.listdir("data"):
+    exec(open("init_db.py").read())
 
 with st.sidebar:
-    option = st.selectbox(
+    theme = st.selectbox(
         "What would you like to revise?",
-        ("Joins", "GroupBy", "Window Functions"),
+        ("cross_joins", "GroupBy", "window_functions"),
         index=None,
         placeholder="Selected theme...",
     )
 
-    st.write("You selected:", option)
+    st.write("You selected:", theme)
 
+    exercise = con.execute(f"SELECT * FROM memory_state WHERE theme = '{theme}'").df().sort_values("last_reviewed")
+    st.write(exercise)
+
+    exercise_name = exercise.iloc[0]["exercise_name"]
+    with open(f"answers/{exercise_name}.sql", "r") as f:
+        answer = f.read()
+
+    solution_df = con.execute(answer).df()
 
 st.header("Your Solution:")
 query = st.text_area(label="Your Query was:", key="user_input")
 
 if query:
-    result = duckdb.sql(query).df()
+    result = con.execute(query).df()
     st.dataframe(result)
 
     try:
@@ -64,12 +57,11 @@ if query:
 tab2, tab3 = st.tabs(["Tables", "Solution"])
 
 with tab2:
-    st.write("table: beverages")
-    st.dataframe(beverages)
-    st.write("table: food_prices")
-    st.dataframe(food_prices)
-    st.write("expected")
-    st.dataframe(solution_df)
+    exercise_tables = exercise.iloc[0]["tables"]
+    for table in exercise_tables:
+        st.write(f"table: {table}")
+        df_table = con.execute(f"SELECT * FROM {table}").df()
+        st.dataframe(df_table)
 
 with tab3:
-    st.write(ANSWER_STR)
+    st.text(answer)
